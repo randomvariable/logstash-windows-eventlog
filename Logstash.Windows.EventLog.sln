@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logstash.Windows.EventLog.Com", "Logstash.Windows.EventLog.Com\Logstash.Windows.EventLog.Com.csproj", "{EC884C72-92B3-41E0-8385-A7E442F92144}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EC884C72-92B3-41E0-8385-A7E442F92144}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EC884C72-92B3-41E0-8385-A7E442F92144}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EC884C72-92B3-41E0-8385-A7E442F92144}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EC884C72-92B3-41E0-8385-A7E442F92144}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

@@ -1,7 +1,6 @@
-﻿// WindowsEventLog.cs
-// compile with: /doc:XMLsample.xml
+﻿// compile with: /doc:XMLsample.xml
 //-----------------------------------------------------------------------
-// <copyright file="WindowsEventLog.cs" company="Naadir Jeewa">
+// <copyright file="IEventWrittenInterface.cs" company="Naadir Jeewa">
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
 //   You may obtain a copy of the License at
@@ -16,9 +15,11 @@
 // </copyright>
 //-----------------------------------------------------------------------
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.Eventing.Reader;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -29,84 +30,6 @@ using Newtonsoft.Json;
 namespace Logstash.Windows.EventLog.Com
 {
     /// <summary>
-    /// The interface for the Logstash event handler.
-    /// </summary>
-    [InterfaceType(ComInterfaceType.InterfaceIsIDispatch), Guid("248DB2EA-2DC6-4D10-8499-AA84ED61D141"), ComVisible(true)]
-    public interface IEventWrittenInterface
-    {
-        /// <summary>
-        /// A method on the Logstash side that must accept a JSON object.
-        /// </summary>
-        /// <param name="json">A Logstash v1 JSON Event</param>
-        [DispId(1), ComVisible(true)]
-        void EventWritten(string json);
-    }
-
-    /// <summary>
-    /// The COM interface that is seen by LogStash.
-    /// </summary>
-    [Guid("7E2D8600-6983-4FCC-8A0F-A859F4970999"), ComVisible(true)]
-    public interface IWindowsEventLog : IDisposable
-    {
-        /// <summary>
-        /// Gets something not currently implemented.
-        /// Sets a position if you need to resume consumption of logs after a reboot.
-        /// </summary>
-        [DispId(1), ComVisible(true)]
-        string Bookmark
-        {
-            get;
-        }
-
-        /// <summary>
-        /// Get a Windows Event object.
-        /// </summary>
-        /// <param name="logName">The name of the log, or its file path.</param>
-        /// <param name="pathTypeName">Either 'LogName', or 'FilePath'</param>
-        /// <param name="query">A filter to apply to the events before being sent.</param>
-        [DispId(2), ComVisible(true)]
-        void GetWindowsEventLog(string logName, string pathTypeName, string query);
-
-        /// <summary>
-        /// Same as above, but allows you to specify a bookmark to start from.
-        /// </summary>
-        /// <param name="logName">The name of the log, or its file path.</param>
-        /// <param name="pathTypeName">Either 'LogName', or 'FilePath'</param>
-        /// <param name="query">A filter to apply to the events before being sent.</param>
-        /// <param name="bookmark">A bookmark XML string</param>
-        [DispId(3), ComVisible(true)]
-        void GetWindowsEventLogWithBookmark(string logName, string pathTypeName, string query, string bookmark);
-
-        /// <summary>
-        /// The standard method that sets up the event handler and enables it.
-        /// </summary>
-        [DispId(4), ComVisible(true)]
-        void Run();
-
-        /// <summary>
-        /// Same as above, but we keep track of how many events are waiting to be sent
-        /// to Logstash.
-        /// </summary>
-        [DispId(5), ComVisible(true)]
-        void RunSpinWait();
-
-        /// <summary>
-        /// If there are no events, then .NET will after a time send LogStash to sleep.
-        /// Once events are waiting to be sent, this methods exits and the caller should
-        /// execute the OLE32 message loop.
-        /// </summary>
-        [DispId(6), ComVisible(true)]
-        void SpinWaitLoop();
-
-        /// <summary>
-        /// Sets the default culture for the AppDomain as well as the current thread's.
-        /// </summary>
-        /// <param name="culture">The localization string to be used, such as en-GB</param>
-        [DispId(7), ComVisible(true)]
-        void SetCulture(string culture);
-    }
-
-    /// <summary>
     /// Provides a Windows Event Log API for Logstash using the post Vista ETW model.
     /// This allows the capturing of non-standard logs (i.e. not just Application, System
     /// and Security), as well as forwarded events captured from other computers.
@@ -116,7 +39,7 @@ namespace Logstash.Windows.EventLog.Com
     /// .NET 4 techniques for multiprocessing. This helps keep the CPU load down for
     /// LogStash by a significant amount (idle at less than 1%).
     /// </remarks>
-    [ComSourceInterfaces(typeof(IEventWrittenInterface)), ClassInterface(ClassInterfaceType.None), Guid("6685C0E6-66F1-4F39-BD1A-182D2B005F37"), ProgId("Logstash.Windows.EventLog"), ComVisible(true)]  
+    [ComSourceInterfaces(typeof(IEventWrittenInterface)), ClassInterface(ClassInterfaceType.None), Guid("6685C0E6-66F1-4F39-BD1A-182D2B005F37"), ProgId("Logstash.Windows.EventLog"), ComVisible(true)]
     public class WindowsEventLog : IWindowsEventLog
     {
         /// <summary>
@@ -244,24 +167,11 @@ namespace Logstash.Windows.EventLog.Com
         }
 
         /// <summary>
-        /// The standard method that sets up the event handler and enables it.
-        /// </summary>
-        [ComVisible(true)]
-        public void Run()
-        {
-            this.watcher.EventRecordWritten += (object s, EventRecordWrittenEventArgs e1) =>
-            {
-                EventWritten(SerializeEventRecord(e1.EventRecord));
-            };
-            this.watcher.Enabled = true;
-        }
-
-        /// <summary>
         /// Same as above, but we keep track of how many events are waiting to be sent
         /// to Logstash.
         /// </summary>
         [ComVisible(true)]
-        public void RunSpinWait()
+        public void EnableHandlers()
         {
             this.watcher.EventRecordWritten += (object s, EventRecordWrittenEventArgs e1) =>
             {
@@ -277,24 +187,61 @@ namespace Logstash.Windows.EventLog.Com
         /// Once events are waiting to be sent, this methods exits and the caller should
         /// execute the OLE32 message loop.
         /// </summary>
+        /// <returns>The number of messages to be picked up</returns>
         [ComVisible(true)]
-        public void SpinWaitLoop()
+        public int YieldAndWaitForMessages()
         {
-            SpinWait spinWait = new SpinWait();
             while (queue < 1)
             {
-                spinWait.SpinOnce();
+                SpinWait.SpinUntil(() => queue > 0);
             }
+
+            return queue;
         }
 
         /// <summary>
         ///  Stuff to implement IDisposable. Not working just yet.
         /// </summary>
-        [ComVisible(true)]
+        [ComVisible(false)]
         public void Dispose()
         {
             this.Dispose(true);
             GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// COM accessible dispose method.
+        /// </summary>
+        [ComVisible(true)]
+        public void ComDispose()
+        {
+            this.Dispose();
+        }
+
+        /// <summary>
+        /// Return a list of all enabled logs on the system.
+        /// </summary>
+        /// <returns>String array of all available logs.</returns>
+        [ComVisible(true)]
+        public string[] GetAllLogNames()
+        {
+            System.Collections.Generic.IList<string> allLogs = new System.Collections.Generic.List<string>();
+            using (EventLogSession logSession = new EventLogSession())
+            {
+                IEnumerable<string> logNames = logSession.GetLogNames();
+                foreach (string logName in logNames)
+                {
+                    using (EventLogConfiguration logConfig = new EventLogConfiguration(logName))
+                    {
+                        if (logConfig.IsEnabled)
+                        {
+                            allLogs.Add(logName);
+                        }
+                    }
+                }
+            }
+
+            return allLogs.Cast<string>().ToArray();
         }
 
         /// <summary>
@@ -312,6 +259,7 @@ namespace Logstash.Windows.EventLog.Com
                 if (disposing)
                 {
                     // Dispose managed resources.
+                    this.watcher.Enabled = false;
                     this.watcher.Dispose();
                 }
 
@@ -331,12 +279,11 @@ namespace Logstash.Windows.EventLog.Com
         [ComVisible(false)]
         private static string SerializeEventRecord(EventRecord e)
         {
-            string serializedRecord = null;
-            StringWriter sw = null;
-            try
+            string logstashEvent = string.Empty;
+
+            using (StringWriter sw = new StringWriter(CultureInfo.InvariantCulture))
+            using (JsonTextWriter writer = new JsonTextWriter(sw))
             {
-                sw = new StringWriter(CultureInfo.InvariantCulture);
-                JsonTextWriter writer = new JsonTextWriter(sw);
                 writer.WriteStartObject();
                 AddEventProperty(writer, "@version", 1);
                 string normalisedDate = ((DateTime)e.TimeCreated).ToString("o", CultureInfo.InvariantCulture);
@@ -348,10 +295,11 @@ namespace Logstash.Windows.EventLog.Com
                 AddEventProperty(writer, "TaskName", e.TaskDisplayName);
                 try
                 {
-                    AddEventProperty(writer, "Message", e.FormatDescription());
+                    AddEventProperty(writer, "@message", e.FormatDescription());
                 }
                 catch (System.Diagnostics.Eventing.Reader.EventLogNotFoundException)
                 {
+                    // Just want to skip this.
                 }
 
                 AddEventProperty(writer, "host", Environment.MachineName);
@@ -377,14 +325,10 @@ namespace Logstash.Windows.EventLog.Com
                 AddEventProperty(writer, "Task", e.Task);
                 AddEventProperty(writer, "EventVersion", e.Version);
                 writer.WriteEndObject();
-                serializedRecord = sw.ToString();
-            }
-            finally
-            {
-                sw.Dispose();
+                logstashEvent = sw.ToString();
             }
 
-            return serializedRecord;
+            return logstashEvent;
         }
 
         /// <summary>
@@ -413,22 +357,29 @@ namespace Logstash.Windows.EventLog.Com
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool IsNull(object o)
         {
-            if (o == null)
+            if (o != null)
+            {
+                switch (o.GetType().Name.ToUpperInvariant())
+                {
+                    case "STRING":
+                        {
+                            return string.IsNullOrEmpty((string)o);
+                        }
+
+                    case "INT":
+                        {
+                            return !((int?)o).HasValue;
+                        }
+
+                    default:
+                        {
+                            return false;
+                        }
+                }
+            }
+            else
             {
                 return true;
-            }
-
-            switch (o.GetType().Name.ToUpperInvariant())
-            {
-                case "STRING":
-                    {
-                        return string.IsNullOrEmpty((string)o);
-                    }
-
-                default:
-                    {
-                        return true;
-                    }
             }
         }
 

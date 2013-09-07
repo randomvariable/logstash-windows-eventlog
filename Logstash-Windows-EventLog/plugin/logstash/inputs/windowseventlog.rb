@@ -2,7 +2,6 @@ require 'logstash/inputs/base'
 require 'logstash/namespace'
 require 'win32ole'
 require 'socket'
-require 'eventmachine'
 
 class  LogStash::Inputs::WindowsEventLog < LogStash::Inputs::Base
   class Interrupted < StandardError; end

@@ -17,31 +17,53 @@ I will provide binaries.
 
 Copy the contents of logstash-windows-eventlog\plugin to Logstash's plugin directory.
 
+Parameters
+----------
+
+* `log_files` - An array of logs to collect, all simply "all" to capture all enabled event logs.
+   
+   To get the name of an event log, use the following PowerShell command:
+    
+        Get-WinEvent -ListLog *
+  
+* `filter`    - A string representation of an xPath query that can filter events before being processed
+              by Logstash.
+* `log_type`  - What type of logs are being processed? A string of either 'LogName' or 'FilePath'.
+
+   * `LogName` - The name of an event log.
+
+   * `FilePath` - The filename of an evtx file.
+
+Examples
+--------
+
 To collect all registered event logs, use the following config:
 
-  input {
-    windowseventlog {}
-  }
+    input {
+      windowseventlog {}
+    }
 
 To collect events from just Hyper-V, use a config like :
 
-  {
-    windowseventlog {
-    log_files  => ['Microsoft-Windows-Hyper-V-Hypervisor-Operational','Microsoft-Windows-Hyper-V-Config-Admin']
-  }
-
+    input {
+      windowseventlog {
+      log_files  => ['Microsoft-Windows-Hyper-V-Hypervisor-Operational','Microsoft-Windows-Hyper-V-Config-Admin']
+    }
+  
 Let's capture some IIS tracing logs (from AppFabric or some such):
 
-  windowseventlog {
-    log_files => ['C:\inetpub\logs\tracing\evt.evtx']
-    log_type  => 'FilePath'
-  }
+    input {
+    windowseventlog {
+      log_files => ['C:\inetpub\logs\tracing\evt.evtx']
+      log_type  => 'FilePath'
+    }
 
 Capture all logs, but filter for only a certain system event ID using an xPath query:
   
-  windowseventlog {
-    filter => "*[System[(EventID=2202)]]"
-  }
+    input {
+    windowseventlog {
+      filter => "*[System[(EventID=2202)]]"
+    }
 
 Why a new event log plugin?
 ---------------------------

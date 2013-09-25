@@ -15,7 +15,7 @@ b) Visual Studio 2012 or some such.
   1. Using Powershell GAC, run:
      1. `Add-GacAssembly -Path Logstash.Windows.EventLog.Com.dll`
 	 1. `Add-GacAssembly -Path Newtonsoft.Json.dll` You'll need to get this from the packages directory.
-  1. c:\windows\Microsoft.NET\Framework64\v4.0.30319\RegAsm.exe "Logstash.Windows.EventLog.Com.dll"
+  1. `c:\windows\Microsoft.NET\Framework64\v4.0.30319\RegAsm.exe "Logstash.Windows.EventLog.Com.dll"`
 1. Copy the contents of logstash-windows-eventlog\plugin to Logstash's plugin directory.
 
 Parameters

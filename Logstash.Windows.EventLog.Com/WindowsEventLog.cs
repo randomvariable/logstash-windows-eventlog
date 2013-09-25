@@ -287,43 +287,128 @@ namespace Logstash.Windows.EventLog.Com
                 writer.WriteStartObject();
                 AddEventProperty(writer, "@version", 1);
                 string normalisedDate = ((DateTime)e.TimeCreated).ToString("o", CultureInfo.InvariantCulture);
+                
                 AddEventProperty(writer, "@timestamp", normalisedDate);
                 AddEventProperty(writer, "type", "eventlog");
-                AddEventProperty(writer, "SourceName", e.ProviderName);
-                AddEventProperty(writer, "EventIdentifier", e.Id);
-                AddEventProperty(writer, "ComputerName", e.MachineName);
-                AddEventProperty(writer, "TaskName", e.TaskDisplayName);
                 try
                 {
-                    AddEventProperty(writer, "@message", e.FormatDescription());
+                  AddEventProperty(writer, "SourceName", e.ProviderName);
                 }
-                catch (System.Diagnostics.Eventing.Reader.EventLogNotFoundException)
+                catch {}
+                try
                 {
-                    // Just want to skip this.
+                  AddEventProperty(writer, "EventIdentifier", e.Id);
                 }
-
-                AddEventProperty(writer, "host", Environment.MachineName);
-                AddEventProperty(writer, "path", e.LogName);
-                AddEventProperty(writer, "LogFile", e.LogName);
-                AddEventProperty(writer, "SourceIdentifier", e.ProviderId);
-                AddEventProperty(writer, "Type", System.Enum.GetName(typeof(StandardEventLevel), e.Level));
-                AddEventProperty(writer, "EventType", e.Level);
-                if (!IsNull(e.UserId))
+                catch {}
+                try
                 {
-                    AddEventProperty(writer, "User", ResolveSIDtoUsername(e.UserId.Value));
+                  AddEventProperty(writer, "ComputerName", e.MachineName);
                 }
+                catch {}
+                try
+                {
+                  AddEventProperty(writer, "@message", e.FormatDescription());
+                }
+                catch {}
+                try
+                {
+                  AddEventProperty(writer, "TaskName", e.TaskDisplayName);
+                }
+                catch {}
+                try
+                {                
+                  AddEventProperty(writer, "host", Environment.MachineName);
+                }
+                catch {}                  
+                try
+                {
+                  AddEventProperty(writer, "path", e.LogName);
+                }
+                catch {}      
+                try
+                {
+                  AddEventProperty(writer, "LogFile", e.LogName);
+                }
+                catch {}      
+                try
+                {                
+                  AddEventProperty(writer, "SourceIdentifier", e.ProviderId);
+                }
+                catch {}      
+                try
+                {
+                  AddEventProperty(writer, "Type", System.Enum.GetName(typeof(StandardEventLevel), e.Level));
+                }
+                catch {}      
+                try
+                {
+                  AddEventProperty(writer, "EventType", e.Level);
+                }
+                catch {}      
+                try
+                {
+                  if (!IsNull(e.UserId))
+                  {
+                      AddEventProperty(writer, "User", ResolveSIDtoUsername(e.UserId.Value));
+                  }
+                }
+                catch {}      
+                try
+                {
+                  AddEventProperty(writer, "RecordNumber", e.RecordId);
+                }
+                catch {}      
+                try
+                {                
+                  AddEventProperty(writer, "ActivityIdentifier", e.ActivityId);
+                }
+                catch {}      
+                try
+                {
+                  AddEventProperty(writer, "RelatedActivityIdentifier", e.RelatedActivityId);
+                }
+                catch {}      
+                try
+                {
+                  AddEventProperty(writer, "Opcode", e.Opcode);
+                }
+                catch {}      
+                try
+                {
+                  AddEventProperty(writer, "OpcodeName", e.OpcodeDisplayName);
+                }
+                catch {}      
+                try
+                {
+                  AddEventProperty(writer, "pid", e.ProcessId);
+                }
+                catch {}      
+                try
+                {
+                  AddEventProperty(writer, "ThreadId", e.ThreadId);
+                }
+                catch {}      
+                try
+                {
+                  SerializeEventProperties(writer, e.Properties);
+                }
+                catch {}      
+                try
+                {
+                  AddEventProperty(writer, "Qualifiers", e.Qualifiers);
+                }
+                catch {}      
+                try
+                {
+                  AddEventProperty(writer, "Task", e.Task);
+                }
+                catch {}      
+                try
+                {
+                  AddEventProperty(writer, "EventVersion", e.Version);
+                }
+                catch {}      
 
-                AddEventProperty(writer, "RecordNumber", e.RecordId);
-                AddEventProperty(writer, "ActivityIdentifier", e.ActivityId);
-                AddEventProperty(writer, "RelatedActivityIdentifier", e.RelatedActivityId);
-                AddEventProperty(writer, "Opcode", e.Opcode);
-                AddEventProperty(writer, "OpcodeName", e.OpcodeDisplayName);
-                AddEventProperty(writer, "pid", e.ProcessId);
-                AddEventProperty(writer, "ThreadId", e.ThreadId);
-                SerializeEventProperties(writer, e.Properties);
-                AddEventProperty(writer, "Qualifiers", e.Qualifiers);
-                AddEventProperty(writer, "Task", e.Task);
-                AddEventProperty(writer, "EventVersion", e.Version);
                 writer.WriteEndObject();
                 logstashEvent = sw.ToString();
             }

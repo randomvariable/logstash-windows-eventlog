@@ -4,18 +4,19 @@ logstash-windows-eventlog
 An input plugin for Logstash which supports the newer ETW logging format.
 
 
-To Install
-----------
-You need:
-a) A strong name key.
-b) .NET Framework 4.5
-c) Visual Studio 2012 or some such.
-d) Logstash running on windows, with ole32 in Ruby.
-
-Open the solution and compile. Register the assemblies using regasm. Once I've got a code signing certificate,
-I will provide binaries.
-
-Copy the contents of logstash-windows-eventlog\plugin to Logstash's plugin directory.
+##To Install
+###Requirements
+a) .NET Framework 4.5
+b) Visual Studio 2012 or some such.
+###Steps
+1. Run `c:\windows\Microsoft.NET\Framework64\v4.0.30319\MSBuild`
+1. Get and install PowerShell GAC from http://powershellgac.codeplex.com/
+1. Copy the DLLs to a useful place and register the binaries:
+  1. Using Powershell GAC, run:
+     1. `Add-GacAssembly -Path Logstash.Windows.EventLog.Com.dll`
+	 1. `Add-GacAssembly -Path Newtonsoft.Json.dll` You'll need to get this from the packages directory.
+  1. c:\windows\Microsoft.NET\Framework64\v4.0.30319\RegAsm.exe "Logstash.Windows.EventLog.Com.dll"
+1. Copy the contents of logstash-windows-eventlog\plugin to Logstash's plugin directory.
 
 Parameters
 ----------

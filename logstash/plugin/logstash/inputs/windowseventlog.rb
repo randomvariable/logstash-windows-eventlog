@@ -1,6 +1,5 @@
 require 'logstash/inputs/base'
 require 'logstash/namespace'
-require 'win32ole'
 require 'socket'
 
 # Pull events from the Windows 2008/Vista+ Windows Event Log
@@ -42,7 +41,8 @@ class  LogStash::Inputs::WindowsEventLog < LogStash::Inputs::Base
   default :codec, 'json'
 
   # Array
-  config :log_files,  :validate => [:array,'all'],         :default => 'all'
+  #config :log_files,  :validate => [:array,'all'],         :default => 'all'
+  config :log_files,  :default => ['all']
   config :filter,     :validate => :string,                :default => '*'
   config :log_type,   :validate => ['LogName','FilePath'], :default => 'LogName'
 
@@ -51,8 +51,15 @@ class  LogStash::Inputs::WindowsEventLog < LogStash::Inputs::Base
   
   public
   def register
+  @olearray ||= Array.new
+  if RUBY_PLATFORM == "java"
+    require "logstash/inputs/eventlog/racob_fix"
+    require "jruby-win32ole"
+  else
+    require "win32ole"
+  end   
     @hostname = Socket.gethostname
-    if (@log_files == 'all')
+    if (@log_files == ['all'])
         @logger.info("Registering input windowseventlog://#{@hostname}/. Will enumerate all logs.")
     else
         @logger.info("Registering input windowseventlog://#{@hostname}/#{@log_files}")    
@@ -64,10 +71,9 @@ class  LogStash::Inputs::WindowsEventLog < LogStash::Inputs::Base
   def run(output_queue)
     @logger.debug("Creating top level OLE object to execute static methods")
 	  eventing = WIN32OLE.new(@@com_provider)
-    if(@log_files = 'all') 
+    if(@log_files == 'all') 
       @log_files = eventing.GetAllLogNames()
-    end # if
-    @olearray ||= Array.new
+    end # if   
     @log_files.each do |log_name|
         @olearray << run_log(output_queue,log_name,@log_type,@filter)
     end # @log_files.each
@@ -101,8 +107,10 @@ class  LogStash::Inputs::WindowsEventLog < LogStash::Inputs::Base
   public
   def teardown
       @logger.warn("Shutting down OLE event handlers")
-      @olearray.each do |ole|
-        ole.ComDispose()
+      unless @olearray.nil?
+        @olearray.each do |ole|
+          ole.ComDispose()
+        end
       end
   end # def teardown
 
